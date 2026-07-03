@@ -12,7 +12,7 @@ export default function Sidebar() {
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface p-4 md:flex">
       <div className="mb-8 flex items-center gap-2 px-2">
         <Stethoscope className="h-6 w-6 text-primary-600" />
-        <span className="text-lg font-semibold text-ink">CliniNote</span>
+        <span className="text-lg font-semibold text-ink">Healnote</span>
       </div>
       <nav className="flex flex-col gap-1">
         {links.map(({ to, label, icon: Icon, end }) => (

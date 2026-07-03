@@ -19,7 +19,7 @@ export default function DashboardPage() {
       <section className="flex flex-col items-center gap-6 rounded-2xl border border-border bg-surface px-6 py-14 text-center">
         <div className="flex items-center gap-2 text-primary-600">
           <Stethoscope className="h-6 w-6" />
-          <span className="text-sm font-medium uppercase tracking-wide">CliniNote</span>
+          <span className="text-sm font-medium uppercase tracking-wide">Healnote</span>
         </div>
         <h1 className="max-w-xl text-2xl font-semibold text-ink">
           Your Notes Assistant !

@@ -1,4 +1,4 @@
-# CliniNote
+# Healnote
 
 An AI-assisted note-taking platform for medical professionals. Practitioners write or upload (PDF) notes about foods/remedies and the conditions they help with; the platform's AI pre-summarizes uploaded documents so a practitioner can search by keyword (e.g. "apple") during a patient visit and instantly see relevant conditions and recommendations.
 
