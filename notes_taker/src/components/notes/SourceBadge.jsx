@@ -1,4 +1,4 @@
-import { FileText, PenLine } from 'lucide-react'
+import { FileText, Globe, PenLine } from 'lucide-react'
 import Badge from '../common/Badge'
 
 export default function SourceBadge({ source }) {
@@ -7,6 +7,15 @@ export default function SourceBadge({ source }) {
       <Badge className="gap-1">
         <FileText className="h-3 w-3" />
         AI-summarized (PDF)
+      </Badge>
+    )
+  }
+
+  if (source === 'web') {
+    return (
+      <Badge className="gap-1">
+        <Globe className="h-3 w-3" />
+        Web research
       </Badge>
     )
   }

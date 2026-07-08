@@ -6,6 +6,7 @@ import { useNotes } from '../context/NotesContext'
 import { useToast } from '../context/ToastContext'
 import ConditionPills from '../components/notes/ConditionPills'
 import SourceBadge from '../components/notes/SourceBadge'
+import VerificationBadge from '../components/notes/VerificationBadge'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -129,8 +130,17 @@ export default function NoteDetailPage() {
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold text-ink">{note.title}</h1>
-          <SourceBadge source={note.source} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <SourceBadge source={note.source} />
+            <VerificationBadge verification={note.verification} note={note.verificationNote} />
+          </div>
         </div>
+
+        {note.verificationNote && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {note.verificationNote}
+          </p>
+        )}
 
         <div>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">

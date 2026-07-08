@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import ConditionPills from './ConditionPills'
 import SourceBadge from './SourceBadge'
+import VerificationBadge from './VerificationBadge'
 import ConfirmDialog from '../common/ConfirmDialog'
 import { useNotes } from '../../context/NotesContext'
 import { useToast } from '../../context/ToastContext'
@@ -47,6 +48,7 @@ export default function NoteCard({ note }) {
             </button>
           </div>
         </div>
+        <VerificationBadge verification={note.verification} note={note.verificationNote} />
         <p className="line-clamp-2 text-sm text-ink-muted">{note.summary}</p>
         <ConditionPills conditions={note.conditions} limit={3} />
       </Link>

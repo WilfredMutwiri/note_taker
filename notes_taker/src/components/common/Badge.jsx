@@ -2,6 +2,7 @@ const tones = {
   neutral: 'bg-surface-muted text-ink-muted border-border',
   primary: 'bg-primary-50 text-primary-700 border-primary-200',
   health: 'bg-health-50 text-health-700 border-health-200',
+  warning: 'bg-amber-50 text-amber-700 border-amber-200',
 }
 
 export default function Badge({ tone = 'neutral', className = '', children }) {

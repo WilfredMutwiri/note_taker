@@ -7,6 +7,7 @@ from .models import Note
 from .serializers import NoteSerializer
 from .services.ai import summarize_document
 from .services.pdf import extract_text
+from .services.web_search import search_for_note
 
 
 class NoteViewSet(viewsets.ModelViewSet):
@@ -27,6 +28,28 @@ class NoteViewSet(viewsets.ModelViewSet):
             or any(q in condition.lower() for condition in note.conditions)
         ]
         return queryset.filter(id__in=matching_ids)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+
+        q = request.query_params.get('q', '').strip()
+        if q and not data:
+            researched = search_for_note(q)
+            if researched:
+                note = Note.objects.create(
+                    title=researched['title'],
+                    subject=researched['subject'],
+                    conditions=researched['conditions'],
+                    summary=researched['summary'],
+                    content=researched['content'],
+                    source=Note.SOURCE_WEB,
+                    verification=Note.VERIFICATION_AI_RESEARCH,
+                )
+                data = [self.get_serializer(note).data]
+
+        return Response(data)
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -55,6 +78,8 @@ class NoteViewSet(viewsets.ModelViewSet):
             content=summarized['content'],
             source=Note.SOURCE_PDF,
             source_file=file,
+            verification=summarized['verification'],
+            verification_note=summarized['verification_note'],
         )
         return Response(self.get_serializer(note).data, status=201)
 
@@ -74,6 +99,8 @@ class NoteViewSet(viewsets.ModelViewSet):
         note.conditions = summarized['conditions']
         note.summary = summarized['summary']
         note.content = summarized['content']
+        note.verification = summarized['verification']
+        note.verification_note = summarized['verification_note']
         note.save()
         return Response(self.get_serializer(note).data)
 
