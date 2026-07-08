@@ -1,9 +1,10 @@
+from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Note
+from .models import Condition, Note
 from .serializers import NoteSerializer
 from .services.ai import summarize_document
 from .services.pdf import extract_text
@@ -15,19 +16,14 @@ class NoteViewSet(viewsets.ModelViewSet):
     serializer_class = NoteSerializer
 
     def get_queryset(self):
-        queryset = Note.objects.all()
-        q = self.request.query_params.get('q', '').strip().lower()
+        queryset = Note.objects.all().prefetch_related('conditions')
+        q = self.request.query_params.get('q', '').strip()
         if not q:
             return queryset
 
-        matching_ids = [
-            note.id
-            for note in queryset
-            if q in note.title.lower()
-            or q in note.subject.lower()
-            or any(q in condition.lower() for condition in note.conditions)
-        ]
-        return queryset.filter(id__in=matching_ids)
+        return queryset.filter(
+            Q(title__icontains=q) | Q(subject__icontains=q) | Q(conditions__name__icontains=q)
+        ).distinct()
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -41,15 +37,20 @@ class NoteViewSet(viewsets.ModelViewSet):
                 note = Note.objects.create(
                     title=researched['title'],
                     subject=researched['subject'],
-                    conditions=researched['conditions'],
                     summary=researched['summary'],
                     content=researched['content'],
                     source=Note.SOURCE_WEB,
                     verification=Note.VERIFICATION_AI_RESEARCH,
                 )
+                note.conditions.set(Condition.bulk_get_or_create(researched['conditions']))
                 data = [self.get_serializer(note).data]
 
         return Response(data)
+
+    def perform_create(self, serializer):
+        condition_names = serializer.validated_data.pop('conditions', [])
+        instance = serializer.save()
+        instance.conditions.set(Condition.bulk_get_or_create(condition_names))
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -73,7 +74,6 @@ class NoteViewSet(viewsets.ModelViewSet):
         note = Note.objects.create(
             title=summarized['title'],
             subject=summarized['subject'],
-            conditions=summarized['conditions'],
             summary=summarized['summary'],
             content=summarized['content'],
             source=Note.SOURCE_PDF,
@@ -81,6 +81,7 @@ class NoteViewSet(viewsets.ModelViewSet):
             verification=summarized['verification'],
             verification_note=summarized['verification_note'],
         )
+        note.conditions.set(Condition.bulk_get_or_create(summarized['conditions']))
         return Response(self.get_serializer(note).data, status=201)
 
     @action(detail=True, methods=['post'])
@@ -96,12 +97,12 @@ class NoteViewSet(viewsets.ModelViewSet):
 
         note.title = summarized['title']
         note.subject = summarized['subject']
-        note.conditions = summarized['conditions']
         note.summary = summarized['summary']
         note.content = summarized['content']
         note.verification = summarized['verification']
         note.verification_note = summarized['verification_note']
         note.save()
+        note.conditions.set(Condition.bulk_get_or_create(summarized['conditions']))
         return Response(self.get_serializer(note).data)
 
     def perform_destroy(self, instance):

@@ -7,4 +7,4 @@ from .models import Note
 class NoteAdmin(admin.ModelAdmin):
     list_display = ('title', 'subject', 'source', 'verification', 'created_at')
     list_filter = ('source', 'verification')
-    search_fields = ('title', 'subject', 'content')
+    search_fields = ('title', 'subject', 'content', 'conditions__name')
