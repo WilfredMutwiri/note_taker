@@ -1,11 +1,8 @@
-// Talks to the Django REST API in backend/. Function signatures match what
-// NotesContext expects so components never touch fetch/response shapes directly.
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
-// DRF errors are either { detail: "..." } (404s, permission errors, etc.) or
-// { field: ["message", ...], ... } (serializer validation failures) — flatten
-// either shape into one readable sentence.
+
 function extractErrorMessage(body) {
   if (!body) return null
   if (typeof body.detail === 'string') return body.detail
