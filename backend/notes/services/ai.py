@@ -3,24 +3,18 @@ import json
 from django.conf import settings
 from openai import OpenAI
 
-from .web_search import verify_claim
+from .web_search import RESPONSE_SHAPE, verify_claim
 from ..models import Note
 
 SYSTEM_PROMPT = """You are a clinical reference assistant. You will be given the text of a \
-document a medical practitioner uploaded (e.g. notes about a food, herb, or remedy). Read it \
-carefully and produce a structured note a practitioner can scan at a glance during a patient visit.
+document a medical practitioner uploaded — it may be about a food/herb/remedy, or about a \
+disease/condition. Read it carefully, first decide which one it is, and produce a structured \
+note a practitioner can scan at a glance during a patient visit.
 
-Respond with a JSON object with exactly these keys:
-- "title": the food/remedy/subject the note is about (short, e.g. "Ginger")
-- "subject": same as title, used for search matching
-- "conditions": an array of short condition/symptom names this food/remedy helps with or \
-prevents (e.g. ["Nausea", "Inflammation"]). Use plain, common medical terms.
-- "summary": a 1-2 sentence summary a practitioner can read in a few seconds
-- "content": a fuller explanation (3-6 sentences) covering the supporting detail from the \
-document, including any cautions or dosage notes if present
+""" + RESPONSE_SHAPE + """
 
-If the document does not clearly relate to a food/remedy and conditions it helps with, do your \
-best to extract whatever medically relevant subject and summary you can."""
+If the document doesn't clearly fit either case, do your best to classify it as "food" and \
+extract whatever medically relevant subject and summary you can."""
 
 # Keeps token usage/cost bounded; a few thousand words is plenty of context for a summary note.
 MAX_INPUT_CHARS = 12000
@@ -29,14 +23,21 @@ MAX_INPUT_CHARS = 12000
 def _placeholder(filename: str, reason: str) -> dict:
     title = filename.rsplit('.', 1)[0] or filename
     return {
+        'type': Note.TYPE_FOOD,
         'title': title,
         'subject': title,
-        'conditions': ['Pending AI review'],
         'summary': f'AI summarization was not completed ({reason}).',
         'content': (
             f'Uploaded file: {filename}. {reason}. '
             'Edit this note manually, or retry the upload once resolved.'
         ),
+        'conditions': ['Pending AI review'],
+        'superiorBenefits': '',
+        'otherBenefits': '',
+        'dosage': '',
+        'cautions': '',
+        'superiorFoods': [],
+        'otherFoods': [],
         'verification': Note.VERIFICATION_UNVERIFIED,
         'verification_note': '',
     }
@@ -53,12 +54,20 @@ def _draft_from_document(text: str, filename: str) -> dict:
         ],
     )
     result = json.loads(response.choices[0].message.content)
+    note_type = result.get('type') if result.get('type') in ('food', 'disease') else 'food'
     return {
+        'type': note_type,
         'title': result.get('title') or filename,
         'subject': result.get('subject') or result.get('title') or filename,
-        'conditions': result.get('conditions') or [],
         'summary': result.get('summary') or '',
         'content': result.get('content') or '',
+        'conditions': result.get('conditions') or [],
+        'superiorBenefits': result.get('superiorBenefits') or '',
+        'otherBenefits': result.get('otherBenefits') or '',
+        'dosage': result.get('dosage') or '',
+        'cautions': result.get('cautions') or '',
+        'superiorFoods': result.get('superiorFoods') or [],
+        'otherFoods': result.get('otherFoods') or [],
     }
 
 
@@ -87,13 +96,9 @@ def summarize_document(text: str, filename: str) -> dict:
     if check.get('verified'):
         return {**draft, 'verification': Note.VERIFICATION_WEB_CONFIRMED, 'verification_note': ''}
 
-    corrected = check.get('corrected') or {}
+    corrected = check.get('corrected') or draft
     return {
-        'title': corrected.get('title') or draft['title'],
-        'subject': corrected.get('subject') or draft['subject'],
-        'conditions': corrected.get('conditions') or draft['conditions'],
-        'summary': corrected.get('summary') or draft['summary'],
-        'content': corrected.get('content') or draft['content'],
+        **corrected,
         'verification': Note.VERIFICATION_AI_CORRECTED,
         'verification_note': check.get('note', ''),
     }

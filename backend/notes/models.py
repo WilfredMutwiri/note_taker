@@ -24,7 +24,36 @@ class Condition(models.Model):
         return result
 
 
+class Food(models.Model):
+    name = models.CharField(max_length=255, unique=True, db_index=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def bulk_get_or_create(cls, names):
+        # Same case-insensitive dedup as Condition.bulk_get_or_create.
+        result = []
+        for raw in names:
+            name = raw.strip()
+            if not name:
+                continue
+            food = cls.objects.filter(name__iexact=name).first() or cls.objects.create(name=name)
+            result.append(food)
+        return result
+
+
 class Note(models.Model):
+    TYPE_FOOD = 'food'
+    TYPE_DISEASE = 'disease'
+    TYPE_CHOICES = [
+        (TYPE_FOOD, 'Food'),
+        (TYPE_DISEASE, 'Disease'),
+    ]
+
     SOURCE_MANUAL = 'manual'
     SOURCE_PDF = 'pdf'
     SOURCE_WEB = 'web'
@@ -47,10 +76,21 @@ class Note(models.Model):
 
     title = models.CharField(max_length=255, db_index=True)
     subject = models.CharField(max_length=255, db_index=True)
-    type = models.CharField(max_length=50, default='food')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_FOOD)
     conditions = models.ManyToManyField(Condition, related_name='notes', blank=True)
     summary = models.TextField()
     content = models.TextField()
+
+    # Food-only structured fields (blank for disease notes)
+    superior_benefits = models.TextField(blank=True, default='')
+    other_benefits = models.TextField(blank=True, default='')
+    dosage = models.TextField(blank=True, default='')
+    cautions = models.TextField(blank=True, default='')
+
+    # Disease-only structured fields (empty for food notes)
+    superior_foods = models.ManyToManyField(Food, related_name='superior_for_diseases', blank=True)
+    other_foods = models.ManyToManyField(Food, related_name='other_for_diseases', blank=True)
+
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=SOURCE_MANUAL)
     source_file = models.FileField(upload_to='notes/pdfs/', null=True, blank=True)
     verification = models.CharField(

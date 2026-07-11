@@ -50,7 +50,10 @@ export default function NoteCard({ note }) {
         </div>
         <VerificationBadge verification={note.verification} note={note.verificationNote} />
         <p className="line-clamp-2 text-sm text-ink-muted">{note.summary}</p>
-        <ConditionPills conditions={note.conditions} limit={3} />
+        <ConditionPills
+          conditions={note.type === 'disease' ? note.superiorFoods : note.conditions}
+          limit={3}
+        />
       </Link>
 
       <ConfirmDialog

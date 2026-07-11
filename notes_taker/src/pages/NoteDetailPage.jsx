@@ -11,6 +11,15 @@ import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 
+function Section({ title, children }) {
+  return (
+    <div>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</h2>
+      {children}
+    </div>
+  )
+}
+
 export default function NoteDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -86,6 +95,8 @@ export default function NoteDetailPage() {
     return <EmptyState title="Note not found" description="It may have been removed." />
   }
 
+  const isDisease = note.type === 'disease'
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
@@ -142,26 +153,60 @@ export default function NoteDetailPage() {
           </p>
         )}
 
-        <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Helps with
-          </h2>
-          <ConditionPills conditions={note.conditions} />
-        </div>
+        {note.summary && (
+          <Section title="Summary">
+            <p className="text-sm text-ink">{note.summary}</p>
+          </Section>
+        )}
 
-        <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Summary
-          </h2>
-          <p className="text-sm text-ink">{note.summary}</p>
-        </div>
+        {isDisease ? (
+          <>
+            {note.superiorFoods?.length > 0 && (
+              <Section title="Top foods for management">
+                <ConditionPills conditions={note.superiorFoods} />
+              </Section>
+            )}
+            {note.otherFoods?.length > 0 && (
+              <Section title="Other foods for management">
+                <ConditionPills conditions={note.otherFoods} />
+              </Section>
+            )}
+          </>
+        ) : (
+          <>
+            {note.superiorBenefits && (
+              <Section title="Superior benefit">
+                <p className="text-sm text-ink">{note.superiorBenefits}</p>
+              </Section>
+            )}
+            {note.otherBenefits && (
+              <Section title="Other benefits">
+                <p className="text-sm text-ink">{note.otherBenefits}</p>
+              </Section>
+            )}
+            {note.conditions?.length > 0 && (
+              <Section title="Helps with">
+                <ConditionPills conditions={note.conditions} />
+              </Section>
+            )}
+            {note.dosage && (
+              <Section title="How to take it / dosage">
+                <p className="text-sm text-ink">{note.dosage}</p>
+              </Section>
+            )}
+            {note.cautions && (
+              <Section title="Cautions">
+                <p className="text-sm text-ink">{note.cautions}</p>
+              </Section>
+            )}
+          </>
+        )}
 
-        <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Full notes
-          </h2>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{note.content}</p>
-        </div>
+        {note.content && (
+          <Section title="Full notes">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{note.content}</p>
+          </Section>
+        )}
 
         <p className="text-xs text-ink-muted">
           Added {new Date(note.createdAt).toLocaleDateString()}
