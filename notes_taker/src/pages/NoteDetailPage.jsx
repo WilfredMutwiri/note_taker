@@ -100,9 +100,13 @@ export default function NoteDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
-        <Link to="/notes" className="flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+        <Link
+          to="/notes"
+          title="Back to notes"
+          className="flex w-fit items-center gap-1.5 p-2 text-sm text-ink-muted hover:text-ink sm:p-0"
+        >
           <ArrowLeft className="h-4 w-4" />
-          Back to notes
+          <span className="hidden sm:inline">Back to notes</span>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -111,24 +115,28 @@ export default function NoteDetailPage() {
               type="button"
               onClick={handleRegenerate}
               disabled={regenerating}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface-muted disabled:opacity-50"
+              title={note.source === 'web' ? 'Refresh from web' : 'Regenerate AI summary'}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface p-2 text-sm font-medium text-ink transition-colors hover:bg-surface-muted disabled:opacity-50 sm:px-3 sm:py-1.5"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${regenerating ? 'animate-spin' : ''}`} />
-              {regenerating
-                ? 'Regenerating...'
-                : note.source === 'web'
-                  ? 'Refresh from web'
-                  : 'Regenerate AI summary'}
+              <span className="hidden sm:inline">
+                {regenerating
+                  ? 'Regenerating...'
+                  : note.source === 'web'
+                    ? 'Refresh from web'
+                    : 'Regenerate AI summary'}
+              </span>
             </button>
           )}
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
             disabled={deleting}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            title="Delete"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface p-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 sm:px-3 sm:py-1.5"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            {deleting ? 'Deleting...' : 'Delete'}
+            <span className="hidden sm:inline">{deleting ? 'Deleting...' : 'Delete'}</span>
           </button>
         </div>
       </div>
