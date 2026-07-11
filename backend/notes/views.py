@@ -105,13 +105,24 @@ class NoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def regenerate(self, request, pk=None):
         note = self.get_object()
-        if note.source != Note.SOURCE_PDF or not note.source_file:
-            return Response({'detail': 'This note has no source PDF to regenerate from.'}, status=400)
 
-        filename = note.source_file.name.rsplit('/', 1)[-1]
-        with note.source_file.open('rb') as file:
-            text = extract_text(file)
-        summarized = summarize_document(text, filename)
+        if note.source == Note.SOURCE_PDF:
+            if not note.source_file:
+                return Response({'detail': 'This note has no source PDF to regenerate from.'}, status=400)
+            filename = note.source_file.name.rsplit('/', 1)[-1]
+            with note.source_file.open('rb') as file:
+                text = extract_text(file)
+            summarized = summarize_document(text, filename)
+        elif note.source == Note.SOURCE_WEB:
+            researched = search_for_note(note.subject)
+            if not researched:
+                return Response(
+                    {'detail': 'Could not refresh this research note right now. Try again shortly.'},
+                    status=502,
+                )
+            summarized = {**researched, 'verification': Note.VERIFICATION_AI_RESEARCH, 'verification_note': ''}
+        else:
+            return Response({'detail': 'This note cannot be regenerated.'}, status=400)
 
         for field, value in _note_fields_from_ai_result(summarized).items():
             setattr(note, field, value)

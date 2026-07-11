@@ -106,7 +106,7 @@ export default function NoteDetailPage() {
         </Link>
 
         <div className="flex items-center gap-2">
-          {note.source === 'pdf' && (
+          {(note.source === 'pdf' || note.source === 'web') && (
             <button
               type="button"
               onClick={handleRegenerate}
@@ -114,7 +114,11 @@ export default function NoteDetailPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface-muted disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${regenerating ? 'animate-spin' : ''}`} />
-              {regenerating ? 'Regenerating...' : 'Regenerate AI summary'}
+              {regenerating
+                ? 'Regenerating...'
+                : note.source === 'web'
+                  ? 'Refresh from web'
+                  : 'Regenerate AI summary'}
             </button>
           )}
           <button
