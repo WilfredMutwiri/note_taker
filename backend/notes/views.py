@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, When
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -9,6 +9,24 @@ from .serializers import NoteSerializer
 from .services.ai import summarize_document
 from .services.pdf import extract_text
 from .services.web_search import search_for_note
+
+# Common words that are too generic to usefully match on their own when a query is
+# split into individual terms below.
+STOPWORDS = {
+    'a', 'an', 'the', 'and', 'or', 'for', 'of', 'to', 'in', 'on', 'with',
+    'is', 'are', 'be', 'can', 'help', 'helps', 'good',
+}
+
+
+def _search_terms(q):
+    # Match the full phrase, plus each significant individual word — a practitioner
+    # typing "high blood pressure remedies" should still find a local note titled
+    # "Blood Pressure" or tagged with condition "Hypertension symptoms", not just an
+    # exact substring of the whole phrase. This is deliberately generous: a false-positive
+    # local match (shown alongside others) is far cheaper than an unnecessary web search
+    # that might fragment an existing note into a near-duplicate.
+    words = [w for w in q.split() if len(w) > 2 and w.lower() not in STOPWORDS]
+    return list(dict.fromkeys([q, *words]))
 
 
 def _note_fields_from_ai_result(result):
@@ -41,13 +59,27 @@ class NoteViewSet(viewsets.ModelViewSet):
         if not q:
             return queryset
 
-        return queryset.filter(
-            Q(title__icontains=q)
-            | Q(subject__icontains=q)
-            | Q(conditions__name__icontains=q)
-            | Q(superior_foods__name__icontains=q)
-            | Q(other_foods__name__icontains=q)
-        ).distinct()
+        term_filter = Q()
+        for term in _search_terms(q):
+            term_filter |= (
+                Q(title__icontains=term)
+                | Q(subject__icontains=term)
+                | Q(conditions__name__icontains=term)
+                | Q(superior_foods__name__icontains=term)
+                | Q(other_foods__name__icontains=term)
+            )
+
+        # Practitioner-authored/uploaded notes are shown ahead of AI web-research notes
+        # when both match, so a search doesn't get crowded out by web results when a
+        # local note already covers the same ground.
+        return (
+            queryset.filter(term_filter)
+            .distinct()
+            .annotate(
+                is_web=Case(When(source=Note.SOURCE_WEB, then=1), default=0, output_field=IntegerField())
+            )
+            .order_by('is_web', '-created_at')
+        )
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
