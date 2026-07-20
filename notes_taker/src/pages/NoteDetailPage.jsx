@@ -10,6 +10,7 @@ import VerificationBadge from '../components/notes/VerificationBadge'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import BulletList from '../components/common/BulletList'
 
 function Section({ title, children }) {
   return (
@@ -183,41 +184,45 @@ export default function NoteDetailPage() {
                 <ConditionPills conditions={note.otherFoods} />
               </Section>
             )}
+            {note.content?.length > 0 && (
+              <Section title="Full notes">
+                <BulletList items={note.content} />
+              </Section>
+            )}
+            {note.cautions?.length > 0 && (
+              <Section title="Cautions">
+                <BulletList items={note.cautions} />
+              </Section>
+            )}
           </>
         ) : (
           <>
-            {note.superiorBenefits && (
-              <Section title="Superior benefit">
-                <p className="text-sm text-ink">{note.superiorBenefits}</p>
-              </Section>
-            )}
-            {note.otherBenefits && (
-              <Section title="Other benefits">
-                <p className="text-sm text-ink">{note.otherBenefits}</p>
-              </Section>
-            )}
             {note.conditions?.length > 0 && (
               <Section title="Helps with">
                 <ConditionPills conditions={note.conditions} />
               </Section>
             )}
+            {note.content?.length > 0 && (
+              <Section title="Full notes">
+                <BulletList items={note.content} />
+              </Section>
+            )}
+            {note.cautions?.length > 0 && (
+              <Section title="Cautions">
+                <BulletList items={note.cautions} />
+              </Section>
+            )}
+            {note.alternatives?.length > 0 && (
+              <Section title="Alternatives">
+                <BulletList items={note.alternatives} />
+              </Section>
+            )}
             {note.dosage && (
-              <Section title="How to take it / dosage">
+              <Section title="Dosage">
                 <p className="text-sm text-ink">{note.dosage}</p>
               </Section>
             )}
-            {note.cautions && (
-              <Section title="Cautions">
-                <p className="text-sm text-ink">{note.cautions}</p>
-              </Section>
-            )}
           </>
-        )}
-
-        {note.content && (
-          <Section title="Full notes">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{note.content}</p>
-          </Section>
         )}
 
         <p className="text-xs text-ink-muted">

@@ -36,10 +36,9 @@ def _note_fields_from_ai_result(result):
         'subject': result['subject'],
         'summary': result['summary'],
         'content': result['content'],
-        'superior_benefits': result['superiorBenefits'],
-        'other_benefits': result['otherBenefits'],
-        'dosage': result['dosage'],
         'cautions': result['cautions'],
+        'alternatives': result['alternatives'],
+        'dosage': result['dosage'],
     }
 
 
@@ -107,8 +106,14 @@ class NoteViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('summary'):
-            data['summary'] = data.get('content', '')[:220]
+        # ManualNoteForm submits `content` as a single free-text string from its textarea;
+        # the model now stores it as a list of bullet-style points, so wrap it into a
+        # single-item list here rather than requiring the frontend to change its UI.
+        content_text = data.get('content', '')
+        if isinstance(content_text, str):
+            if not data.get('summary'):
+                data['summary'] = content_text[:220]
+            data['content'] = [content_text] if content_text else []
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -123,6 +128,11 @@ class NoteViewSet(viewsets.ModelViewSet):
         text = extract_text(file)
         file.seek(0)
         summarized = summarize_document(text, file.name)
+        if summarized is None:
+            return Response(
+                {'detail': "This document doesn't appear to be about a food or a disease."},
+                status=422,
+            )
 
         note = Note.objects.create(
             **_note_fields_from_ai_result(summarized),
@@ -145,6 +155,11 @@ class NoteViewSet(viewsets.ModelViewSet):
             with note.source_file.open('rb') as file:
                 text = extract_text(file)
             summarized = summarize_document(text, filename)
+            if summarized is None:
+                return Response(
+                    {'detail': "This document doesn't appear to be about a food or a disease."},
+                    status=422,
+                )
         elif note.source == Note.SOURCE_WEB:
             researched = search_for_note(note.subject)
             if not researched:

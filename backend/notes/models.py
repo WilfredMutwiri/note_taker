@@ -79,13 +79,12 @@ class Note(models.Model):
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_FOOD)
     conditions = models.ManyToManyField(Condition, related_name='notes', blank=True)
     summary = models.TextField()
-    content = models.TextField()
+    content = models.JSONField(default=list)
 
-    # Food-only structured fields (blank for disease notes)
-    superior_benefits = models.TextField(blank=True, default='')
-    other_benefits = models.TextField(blank=True, default='')
+    # Food-only structured fields (blank/empty for disease notes)
     dosage = models.TextField(blank=True, default='')
-    cautions = models.TextField(blank=True, default='')
+    cautions = models.JSONField(default=list)
+    alternatives = models.JSONField(default=list)
 
     # Disease-only structured fields (empty for food notes)
     superior_foods = models.ManyToManyField(Food, related_name='superior_for_diseases', blank=True)

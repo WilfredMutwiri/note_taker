@@ -20,10 +20,10 @@ class NoteSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     verificationNote = serializers.CharField(source='verification_note', read_only=True)
     conditions = TagListField()
-    superiorBenefits = serializers.CharField(source='superior_benefits', read_only=True)
-    otherBenefits = serializers.CharField(source='other_benefits', read_only=True)
+    content = serializers.ListField(child=serializers.CharField())
+    cautions = serializers.ListField(child=serializers.CharField(), read_only=True)
+    alternatives = serializers.ListField(child=serializers.CharField(), read_only=True)
     dosage = serializers.CharField(read_only=True)
-    cautions = serializers.CharField(read_only=True)
     superiorFoods = TagListField(source='superior_foods', read_only=True)
     otherFoods = TagListField(source='other_foods', read_only=True)
 
@@ -37,10 +37,9 @@ class NoteSerializer(serializers.ModelSerializer):
             'conditions',
             'summary',
             'content',
-            'superiorBenefits',
-            'otherBenefits',
-            'dosage',
             'cautions',
+            'alternatives',
+            'dosage',
             'superiorFoods',
             'otherFoods',
             'source',
@@ -54,10 +53,9 @@ class NoteSerializer(serializers.ModelSerializer):
             'verification',
             'verificationNote',
             'createdAt',
-            'superiorBenefits',
-            'otherBenefits',
-            'dosage',
             'cautions',
+            'alternatives',
+            'dosage',
             'superiorFoods',
             'otherFoods',
         ]

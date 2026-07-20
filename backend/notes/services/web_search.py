@@ -12,17 +12,18 @@ after) with exactly these keys, ALL always present:
 - "title": short subject name
 - "subject": same as title, used for search matching
 - "summary": a 1-2 sentence summary a practitioner can read in a few seconds
-- "content": a fuller 3-6 sentence explanation
+- "content": an array of short bullet-point strings (NOT a paragraph) covering the key \
+indications (food) or management overview (disease) — each item one short, scannable point
+- "cautions": an array of short bullet-point strings (NOT a paragraph) — safety notes, \
+contraindications, who should avoid/limit it. Use [] if there are genuinely none.
 
-If type is "food", also fill in (leave the disease-only fields below as "" / []):
+If type is "food", also fill in (leave the disease-only fields below as [] / ""):
 - "conditions": array of short condition/symptom names this food/remedy helps with or prevents
-- "superiorBenefits": the single most important, best-evidenced benefit (a short sentence or two)
-- "otherBenefits": other secondary benefits (a short sentence or two)
-- "dosage": how to take it for maximum benefit — typical amount, form, timing
-- "cautions": safety notes, contraindications, or who should avoid/limit it
+- "alternatives": array of strings, each "Name — one short reason", listing comparable \
+alternative foods/remedies a practitioner could suggest instead
+- "dosage": ONE short line — typical amount, form, timing (e.g. "120g daily"). NOT a paragraph.
 
-If type is "disease", also fill in (leave "conditions", "superiorBenefits", "otherBenefits", \
-"dosage", "cautions" as "" / []):
+If type is "disease", also fill in (leave "conditions", "alternatives", "dosage" as [] / ""):
 - "superiorFoods": array of up to 3 of the single best foods/remedies for managing this disease \
 — REQUIRED, must not be omitted or left empty for a disease
 - "otherFoods": array of other helpful foods/remedies beyond the top 3 — REQUIRED for a disease
@@ -30,7 +31,11 @@ If type is "disease", also fill in (leave "conditions", "superiorBenefits", "oth
 Your JSON object MUST include every single key listed above, every time, with no exceptions. \
 Never omit a key. Use "" or [] only for the keys that don't apply to the type you classified — \
 never omit a key entirely, and never leave superiorFoods/otherFoods empty when type is "disease", \
-or conditions empty when type is "food"."""
+or conditions empty when type is "food".
+
+This platform stores notes about foods/remedies and diseases/conditions ONLY — nothing else. If \
+the subject is clearly not a food/remedy or a disease/condition, respond with EXACTLY this and \
+nothing more: {{"type": "not_relevant"}}"""
 
 SEARCH_PROMPT_TEMPLATE = """You are a clinical reference assistant helping a medical practitioner \
 who found nothing in their local notes for: "{query}"
@@ -89,6 +94,16 @@ def _call_web_search(prompt):
         return None
 
 
+def _as_list(value):
+    # The model is instructed to return arrays for these fields, but defensively handle it
+    # occasionally returning a single string instead, so a formatting slip never crashes.
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
 def _note_shape_from_result(result):
     note_type = result.get('type') if result.get('type') in ('food', 'disease') else 'food'
     return {
@@ -96,12 +111,11 @@ def _note_shape_from_result(result):
         'title': result.get('title') or '',
         'subject': result.get('subject') or result.get('title') or '',
         'summary': result.get('summary') or '',
-        'content': result.get('content') or '',
+        'content': _as_list(result.get('content')),
+        'cautions': _as_list(result.get('cautions')),
         'conditions': result.get('conditions') or [],
-        'superiorBenefits': result.get('superiorBenefits') or '',
-        'otherBenefits': result.get('otherBenefits') or '',
+        'alternatives': _as_list(result.get('alternatives')),
         'dosage': result.get('dosage') or '',
-        'cautions': result.get('cautions') or '',
         'superiorFoods': result.get('superiorFoods') or [],
         'otherFoods': result.get('otherFoods') or [],
     }
@@ -110,11 +124,12 @@ def _note_shape_from_result(result):
 def search_for_note(query: str) -> dict | None:
     """Search the web for a note-shaped answer when nothing local matches a query.
 
-    Returns None if search is unavailable, fails, or turns up nothing relevant — callers
-    should fall back to the normal "no results" behavior in that case.
+    Returns None if search is unavailable, fails, turns up nothing relevant, or the query
+    isn't about a food/remedy or disease/condition at all (this platform's only two note
+    types) — callers should fall back to the normal "no results" behavior in that case.
     """
     result = _call_web_search(SEARCH_PROMPT_TEMPLATE.format(query=query))
-    if not result or result.get('not_found'):
+    if not result or result.get('not_found') or result.get('type') == 'not_relevant':
         return None
     if not result.get('title'):
         return None
@@ -131,15 +146,15 @@ def verify_claim(draft: dict) -> dict | None:
     if draft.get('type') == 'disease':
         claims = (
             f"Claimed top 3 foods for management: {', '.join(draft.get('superiorFoods', []))}\n"
-            f"Claimed other helpful foods: {', '.join(draft.get('otherFoods', []))}"
+            f"Claimed other helpful foods: {', '.join(draft.get('otherFoods', []))}\n"
+            f"Claimed cautions: {'; '.join(draft.get('cautions', []))}"
         )
     else:
         claims = (
             f"Claimed conditions helped/prevented: {', '.join(draft.get('conditions', []))}\n"
-            f"Claimed superior benefit: {draft.get('superiorBenefits', '')}\n"
-            f"Claimed other benefits: {draft.get('otherBenefits', '')}\n"
+            f"Claimed alternatives: {'; '.join(draft.get('alternatives', []))}\n"
             f"Claimed dosage: {draft.get('dosage', '')}\n"
-            f"Claimed cautions: {draft.get('cautions', '')}"
+            f"Claimed cautions: {'; '.join(draft.get('cautions', []))}"
         )
 
     prompt = VERIFY_PROMPT_TEMPLATE.format(
@@ -147,7 +162,7 @@ def verify_claim(draft: dict) -> dict | None:
         subject=draft.get('subject', ''),
         claims=claims,
         summary=draft.get('summary', ''),
-        content=draft.get('content', ''),
+        content='; '.join(draft.get('content', [])),
     )
     result = _call_web_search(prompt)
     if not result or 'verified' not in result:
